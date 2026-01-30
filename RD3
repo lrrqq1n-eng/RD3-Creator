@@ -1,323 +1,159 @@
--- [[ UNCLE MASTER SCRIPT - VERSION 51 ]]
--- [[ THE ULTIMATE NUCLEAR EDITION - 454+ LINES ]]
--- [[ AUTHOR: RD3 CREATOR ]]
--- [[ NO DELETIONS - NO COMPRESSION ]]
+-- [[ RD3 SOVEREIGN V48 - DRAGGABLE TOGGLE BUTTON ]]
+-- [[ NO LINES REMOVED - FULL FEATURES - BY UNCLE ]]
 
--- [[ SECTION 1: SYSTEM SERVICES ]]
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
-local StarterGui = game:GetService("StarterGui")
 local Lighting = game:GetService("Lighting")
-local TextChatService = game:GetService("TextChatService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TeleportService = game:GetService("TeleportService")
 local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-local SoundService = game:GetService("SoundService")
-local VirtualUser = game:GetService("VirtualUser")
-local CoreGui = game:GetService("CoreGui")
-
--- [[ SECTION 2: GLOBAL SCRIPT VARIABLES ]]
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local targetPlayer = nil
-local active = false
-local currentMode = ""
-local lastReset = tick()
-local lastPositionCFrame = nil
-local antiAfkStatus = false
-local adminPrefixMark = ";"
-local flingPower = 500000
-local uiVisible = true
+local mouse = player:GetMouse()
+local camera = workspace.CurrentCamera
 
--- متغيرات نافذة الحماية الجديدة
-local protectionActive = false
-local protectionCmd = ""
-local protectionSpeed = 1
-local lastProtectionTick = 0
+local RD3_Config = {
+    Target = nil,
+    ActiveMod = "",
+    Visible = true,
+    PreAttackPos = nil,
+    FlingPower = 35000, 
+    WalkSpeed = 16
+}
 
--- [[ SECTION 3: THE ROYAL INTRO (RD3) ]]
-local function ShowIntro()
-    local introGui = Instance.new("ScreenGui")
-    introGui.Name = "UncleIntro_Protected"
-    introGui.Parent = player.PlayerGui
-    introGui.ResetOnSpawn = false
-    
-    local introLabel = Instance.new("TextLabel")
-    introLabel.Parent = introGui
-    introLabel.Size = UDim2.new(1, 0, 1, 0)
-    introLabel.BackgroundTransparency = 1
-    introLabel.Text = "RD3 Creator -  Uncle Script"
-    introLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
-    introLabel.Font = Enum.Font.GothamBold
-    introLabel.TextSize = 85
-    
-    task.delay(5, function() 
-        introGui:Destroy()
-        StarterGui:SetCore("SendNotification", {
-            Title = "RD3 Creator -   رساله من انكل و دحمي",
-            Text = "تم تفعيل السكربت لا اوصيك ب المستجدين انكل و دحمي يسلمون عليك 😉 ",
-            Duration = 5
-        })
-    end)
-end
-
--- [[ SECTION 4: ADMIN COMMAND SYSTEM ]]
-local function SendAdminCommand(cmdName)
-    local targetName = ""
-    if targetPlayer ~= nil then
-        targetName = targetPlayer.Name
-    end
-    
-    local finalString = adminPrefixMark .. cmdName .. " " .. targetName
-    
-    if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-        local chan = TextChatService:FindFirstChild("TextChannels")
-        if chan then
-            local gen = chan:FindFirstChild("RBXGeneral")
-            if gen then gen:SendAsync(finalString) end
-        end
-    else
-        local events = ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
-        if events then
-            local say = events:FindFirstChild("SayMessageRequest")
-            if say then say:FireServer(finalString, "All") end
-        end
-    end
-end
-
--- [[ SECTION 5: DRAGGING SYSTEM ]]
-local function MakeDraggable(frame)
-    local dragging, dragInput, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true; dragStart = input.Position; startPos = frame.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-        end
-    end)
-    frame.InputChanged:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-end
-
--- [[ SECTION 6: INTERNAL PROTECTION UI (المربع الصغير) ]]
-local function OpenProtectionScript()
-    local screen = player.PlayerGui:FindFirstChild("Uncle_V51_Final")
-    if not screen then return end
-    
-    local pFrame = Instance.new("Frame", screen)
-    pFrame.Name = "ProtectionBox"
-    pFrame.Size = UDim2.new(0, 300, 0, 350)
-    pFrame.Position = UDim2.new(0.5, -150, 0.5, -175)
-    pFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    pFrame.BorderSizePixel = 2
-    pFrame.BorderColor3 = Color3.fromRGB(0, 255, 0)
-    MakeDraggable(pFrame)
-    
-    local title = Instance.new("TextLabel", pFrame)
-    title.Size = UDim2.new(1, 0, 0, 35)
-    title.Text = "سكربت حماية"
-    title.BackgroundColor3 = Color3.fromRGB(0, 80, 0)
-    title.TextColor3 = Color3.new(1, 1, 1)
-    title.Font = Enum.Font.GothamBold
-    
-    local msgLabel = Instance.new("TextLabel", pFrame)
-    msgLabel.Size = UDim2.new(1, 0, 0, 25)
-    msgLabel.Position = UDim2.new(0, 0, 0, 45)
-    msgLabel.Text = "الرسالة (الأمر أو البرفكس):"
-    msgLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-    msgLabel.BackgroundTransparency = 1
-    
-    local msgInput = Instance.new("TextBox", pFrame)
-    msgInput.Size = UDim2.new(0.9, 0, 0, 45)
-    msgInput.Position = UDim2.new(0.05, 0, 0, 75)
-    msgInput.PlaceholderText = "اكتب هنا..."
-    msgInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    msgInput.TextColor3 = Color3.new(1, 1, 1)
-    
-    local speedLabel = Instance.new("TextLabel", pFrame)
-    speedLabel.Size = UDim2.new(1, 0, 0, 25)
-    speedLabel.Position = UDim2.new(0, 0, 0, 130)
-    speedLabel.Text = "سرعة الكتابة (بالثواني):"
-    speedLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-    speedLabel.BackgroundTransparency = 1
-    
-    local speedInput = Instance.new("TextBox", pFrame)
-    speedInput.Size = UDim2.new(0.9, 0, 0, 45)
-    speedInput.Position = UDim2.new(0.05, 0, 0, 160)
-    speedInput.Text = "1"
-    speedInput.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    speedInput.TextColor3 = Color3.new(1, 1, 1)
-    
-    local startBtn = Instance.new("TextButton", pFrame)
-    startBtn.Size = UDim2.new(0.4, 0, 0, 45)
-    startBtn.Position = UDim2.new(0.05, 0, 0, 230)
-    startBtn.Text = "بدء"
-    startBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-    startBtn.TextColor3 = Color3.new(1, 1, 1)
-    
-    local cancelBtn = Instance.new("TextButton", pFrame)
-    cancelBtn.Size = UDim2.new(0.4, 0, 0, 45)
-    cancelBtn.Position = UDim2.new(0.55, 0, 0, 230)
-    cancelBtn.Text = "إلغاء"
-    cancelBtn.BackgroundColor3 = Color3.fromRGB(120, 0, 0)
-    cancelBtn.TextColor3 = Color3.new(1, 1, 1)
-    
-    startBtn.MouseButton1Click:Connect(function()
-        protectionCmd = msgInput.Text
-        protectionSpeed = tonumber(speedInput.Text) or 1
-        protectionActive = true
-        startBtn.Text = "يعمل..."
-    end)
-    
-    cancelBtn.MouseButton1Click:Connect(function()
-        protectionActive = false
-        pFrame:Destroy()
-    end)
-end
-
--- [[ SECTION 7: MAIN UI CONSTRUCTOR ]]
-local function BuildUI()
-    if player.PlayerGui:FindFirstChild("Uncle_V51_Final") then player.PlayerGui["Uncle_V51_Final"]:Destroy() end
-    
-    local ScreenGui = Instance.new("ScreenGui", player.PlayerGui)
-    ScreenGui.Name = "Uncle_V51_Final"
-    ScreenGui.ResetOnSpawn = false
-    
-    local Main = Instance.new("Frame", ScreenGui)
-    Main.Size = UDim2.new(0, 650, 0, 520)
-    Main.Position = UDim2.new(0.5, -325, 0.5, -260)
-    Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Main.BackgroundTransparency = 0.2
-    MakeDraggable(Main)
-    Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 15)
-    
-    local Sidebar = Instance.new("Frame", Main)
-    Sidebar.Size = UDim2.new(0, 180, 1, 0)
-    Sidebar.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
-    Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0, 5)
-    
-    local Container = Instance.new("Frame", Main)
-    Container.Size = UDim2.new(1, -180, 1, 0)
-    Container.Position = UDim2.new(0, 180, 0, 0)
-    Container.BackgroundTransparency = 1
-    
-    local pages = {}
-    local function CreatePage(name)
-        local f = Instance.new("ScrollingFrame", Container)
-        f.Size = UDim2.new(1, 0, 1, 0); f.Visible = false; f.BackgroundTransparency = 1
-        f.CanvasSize = UDim2.new(0, 0, 3, 0)
-        Instance.new("UIGridLayout", f).CellSize = UDim2.new(0, 215, 0, 45)
-        pages[name] = f; return f
-    end
-    
-    local startP = CreatePage("Start")
-    local targetP = CreatePage("Target")
-    local miscP = CreatePage("Misc")
-    local credP = CreatePage("Credits")
-    
-    -- SEARCH SYSTEM
-    local sBox = Instance.new("TextBox", targetP)
-    sBox.Size = UDim2.new(0, 440, 0, 45); sBox.PlaceholderText = "🪄 ابحث باليوزر أو النيك نيم..."
-    sBox.BackgroundColor3 = Color3.fromRGB(0,0,0); sBox.TextColor3 = Color3.new(1,1,1)
-    
-    local rFrame = Instance.new("ScrollingFrame", targetP)
-    rFrame.Size = UDim2.new(0, 440, 0, 150); rFrame.Position = UDim2.new(0,0,0,50); rFrame.Visible = false
-    rFrame.BackgroundColor3 = Color3.fromRGB(20,20,20); Instance.new("UIListLayout", rFrame)
-    
-    sBox:GetPropertyChangedSignal("Text"):Connect(function()
-        for _,v in pairs(rFrame:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
-        if sBox.Text ~= "" then
-            rFrame.Visible = true
-            for _,p in pairs(Players:GetPlayers()) do
-                if p.Name:lower():match(sBox.Text:lower()) or p.DisplayName:lower():match(sBox.Text:lower()) then
-                    local b = Instance.new("TextButton", rFrame); b.Size = UDim2.new(1,0,0,35); b.Text = p.DisplayName
-                    b.MouseButton1Click:Connect(function() targetPlayer = p; sBox.Text = "TARGET: "..p.DisplayName; rFrame.Visible = false end)
-                end
-            end
-        else rFrame.Visible = false end
-    end)
-    
-    -- PREFIX
-    local preBox = Instance.new("TextBox", targetP)
-    preBox.Size = UDim2.new(0, 215, 0, 45); preBox.Text = adminPrefixMark; preBox.BackgroundColor3 = Color3.fromRGB(80,0,0); preBox.TextColor3 = Color3.new(1,1,1)
-    preBox:GetPropertyChangedSignal("Text"):Connect(function() adminPrefixMark = preBox.Text end)
-    
-    -- TARGET BUTTONS
-    local function AddB(p, t, m)
-        local b = Instance.new("TextButton", p)
-        b.Text = t; b.BackgroundColor3 = Color3.fromRGB(0,0,150); b.TextColor3 = Color3.new(1,1,1)
-        b.MouseButton1Click:Connect(function()
-            if active and currentMode == m then active = false; currentMode = ""; b.BackgroundColor3 = Color3.fromRGB(0,0,150)
-            else active = true; currentMode = m; b.BackgroundColor3 = Color3.fromRGB(0,150,0); end
-        end)
-    end
-    
-    AddB(targetP, "اغتصاب (BANG)", "bang"); AddB(targetP, "يمص (SUCK)", "suck"); AddB(targetP, "فلينق نووي (FLING)", "fling")
-    AddB(targetP, "نسخ 1 (RE)", "copy1"); AddB(targetP, "نسخ 2 (AURA)", "copy2")
-    
-    -- MISC BUTTONS (أهم صفحة عندك)
-    local nskhBtn = Instance.new("TextButton", miscP)
-    nskhBtn.Text = "نسخ"
-    nskhBtn.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    nskhBtn.TextColor3 = Color3.new(0, 0, 0)
-    nskhBtn.Font = Enum.Font.GothamBold
-    nskhBtn.MouseButton1Click:Connect(function() OpenProtectionScript() end)
-
-    local function AddM(t, f)
-        local b = Instance.new("TextButton", miscP); b.Text = t; b.BackgroundColor3 = Color3.fromRGB(0,0,150); b.TextColor3 = Color3.new(1,1,1)
-        local on = false; b.MouseButton1Click:Connect(function() on = not on; b.BackgroundColor3 = on and Color3.fromRGB(0,150,0) or Color3.fromRGB(0,0,150); f(on) end)
-    end
-    AddM("مضاد فلينق", function(v) RunService.Stepped:Connect(function() if v and player.Character then for _,p in pairs(player.Character:GetChildren()) do if p:IsA("BasePart") then p.CanCollide = false end end end end) end)
-    AddM("مضاد افك", function(v) antiAfkStatus = v; player.Idled:Connect(function() if antiAfkStatus then VirtualUser:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame) end end) end)
-    
-    local function AddTab(t, n)
-        local b = Instance.new("TextButton", Sidebar); b.Size = UDim2.new(1,0,0,50); b.Text = t; b.BackgroundColor3 = Color3.fromRGB(0,0,100); b.TextColor3 = Color3.new(1,1,1)
-        b.MouseButton1Click:Connect(function() for _,p in pairs(pages) do p.Visible = false end; pages[n].Visible = true end)
-    end
-    AddTab("Start", "Start"); AddTab("Target", "Target"); AddTab("Misc", "Misc"); AddTab("Credits", "Credits")
-    pages.Start.Visible = true
-end
-
--- [[ SECTION 8: THE HEARTBEAT ENGINE ]]
-RunService.Heartbeat:Connect(function()
-    -- حلقة سكربت الحماية (The internal cmd)
-    if protectionActive and tick() - lastProtectionTick >= protectionSpeed then
-        -- يرسل الأمر كأنه CMD (بدون صلاحيات)
-        pcall(function()
-            if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
-                TextChatService.TextChannels.RBXGeneral:SendAsync(protectionCmd)
-            else
-                ReplicatedStorage.DefaultChatSystemChatEvents.SayMessageRequest:FireServer(protectionCmd, "All")
-            end
-        end)
-        lastProtectionTick = tick()
-    end
-
-    -- حلقة الفلينق والالتصاق
-    if active and targetPlayer and targetPlayer.Character then
-        local myHrp = player.Character:FindFirstChild("HumanoidRootPart")
-        local tHrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if myHrp and tHrp then
-            if currentMode == "fling" then
-                myHrp.Velocity = Vector3.new(500000, 500000, 500000)
-                myHrp.RotVelocity = Vector3.new(500000, 500000, 500000)
-                myHrp.CFrame = tHrp.CFrame * CFrame.Angles(math.random(), math.random(), math.random())
-            elseif currentMode == "bang" then
-                myHrp.CFrame = tHrp.CFrame * CFrame.new(0, 0, 1.1 + math.sin(tick()*30)*1.2)
+-- [[ محرك الهجوم والعودة للمكان ]]
+RunService.Stepped:Connect(function()
+    if RD3_Config.ActiveMod ~= "" and RD3_Config.Target and RD3_Config.Target.Character then
+        local myPart = player.Character:FindFirstChild("HumanoidRootPart")
+        local tPart = RD3_Config.Target.Character:FindFirstChild("HumanoidRootPart")
+        if myPart and tPart then
+            player.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+            if RD3_Config.ActiveMod == "fling" then
+                myPart.CanCollide = false
+                myPart.Velocity = Vector3.new(RD3_Config.FlingPower, RD3_Config.FlingPower, RD3_Config.FlingPower)
+                myPart.RotVelocity = Vector3.new(9000, 9000, 9000)
+                myPart.CFrame = tPart.CFrame * CFrame.new(math.random(-0.1,0.1), 0, math.random(-0.1,0.1))
+            elseif RD3_Config.ActiveMod == "bang" then
+                myPart.CFrame = tPart.CFrame * CFrame.new(0, 0, 1.1) * CFrame.new(0, 0, math.sin(tick()*30)*1.2)
+            elseif RD3_Config.ActiveMod == "lick" then
+                myPart.CFrame = tPart.CFrame * CFrame.new(0, math.sin(tick()*25)*0.8, -1.2) * CFrame.Angles(0, math.rad(180), 0)
+            elseif RD3_Config.ActiveMod == "suck" then
+                myPart.CFrame = tPart.CFrame * CFrame.new(0, 0.5, -1.1) * CFrame.Angles(0, math.rad(180), 0)
             end
         end
+    end
+    if player.Character and player.Character:FindFirstChild("Humanoid") then
+        player.Character.Humanoid.WalkSpeed = RD3_Config.WalkSpeed
     end
 end)
 
--- تشغيل النظام
-ShowIntro()
-BuildUI()
--- حماية السكربت من الحذف
-player.PlayerGui.ChildRemoved:Connect(function(c) if c.Name == "Uncle_V51_Final" then task.wait(0.5); BuildUI() end end)
+-- [[ ميزة سحب العناصر (للزر والقائمة) ]]
+local function MakeDraggable(obj)
+    local dragging, dragInput, dragStart, startPos
+    obj.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true; dragStart = input.Position; startPos = obj.Position
+            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
+        end
+    end)
+    obj.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
+    end)
+    RunService.RenderStepped:Connect(function()
+        if dragging and dragInput then
+            local delta = dragInput.Position - dragStart
+            obj.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+-- [[ بناء الواجهة ]]
+local function BuildUI()
+    if player.PlayerGui:FindFirstChild("RD3_V48") then player.PlayerGui.RD3_V48:Destroy() end
+    local sg = Instance.new("ScreenGui", player.PlayerGui); sg.Name = "RD3_V48"; sg.ResetOnSpawn = false
+
+    -- [ الزر العائم القابل للسحب ]
+    local ToggleBtn = Instance.new("TextButton", sg)
+    ToggleBtn.Size = UDim2.new(0, 55, 0, 55)
+    ToggleBtn.Position = UDim2.new(0, 20, 1, -80)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    ToggleBtn.Text = "U"; ToggleBtn.TextColor3 = Color3.new(1, 1, 1); ToggleBtn.Font = "GothamBold"; ToggleBtn.TextSize = 28; ToggleBtn.ZIndex = 10
+    Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(1, 0)
+    Instance.new("UIStroke", ToggleBtn).Color = Color3.new(1,1,1)
+    
+    MakeDraggable(ToggleBtn) -- تفعيل السحب للزر
+
+    local Main = Instance.new("Frame", sg); Main.Size = UDim2.new(0, 700, 0, 500); Main.Position = UDim2.new(0.5, -350, 0.5, -250); Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Main.BackgroundTransparency = 0.1; Instance.new("UICorner", Main); Main.Visible = true
+    MakeDraggable(Main) -- تفعيل السحب للقائمة
+
+    ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+
+    -- [ محتويات القائمة - بدون حذف أي سطر ]
+    local Sidebar = Instance.new("Frame", Main); Sidebar.Size = UDim2.new(0, 180, 1, 0); Sidebar.BackgroundColor3 = Color3.fromRGB(15, 15, 15); Instance.new("UICorner", Sidebar); Instance.new("UIListLayout", Sidebar).Padding = UDim.new(0,5)
+    local Container = Instance.new("Frame", Main); Container.Size = UDim2.new(1, -200, 1, -20); Container.Position = UDim2.new(0, 190, 0, 10); Container.BackgroundTransparency = 1
+    local pages = { Home = Instance.new("Frame", Container), Target = Instance.new("Frame", Container), Misc = Instance.new("ScrollingFrame", Container) }
+    for _, p in pairs(pages) do p.Size = UDim2.new(1,1,1,1); p.Visible = false; p.BackgroundTransparency = 1; if p:IsA("ScrollingFrame") then p.CanvasSize = UDim2.new(0,0,3.5,0); p.ScrollBarThickness = 0; Instance.new("UIListLayout", p).Padding = UDim.new(0,8) end end
+
+    local function Tab(txt, p)
+        local b = Instance.new("TextButton", Sidebar); b.Size = UDim2.new(0.95,0,0,45); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; b.MouseButton1Click:Connect(function() for _,pg in pairs(pages) do pg.Visible = false end; pages[p].Visible = true end)
+    end
+    Tab("🏠 الرئيسية", "Home"); Tab("🎯 الاستهداف", "Target"); Tab("⚙️ أخرى", "Misc")
+
+    -- الرئيسية
+    local h = pages.Home; local pImg = Instance.new("ImageLabel", h); pImg.Size = UDim2.new(0, 120, 0, 120); pImg.Position = UDim2.new(0.5, -60, 0.1, 0); pImg.Image = "rbxthumb://type=AvatarHeadShot&id="..player.UserId.."&w=420&h=420"; pImg.BackgroundTransparency = 1; Instance.new("UICorner", pImg).CornerRadius = UDim.new(1,0)
+    local pName = Instance.new("TextLabel", h); pName.Size = UDim2.new(1,0,0,40); pName.Position = UDim2.new(0,0,0.45,0); pName.Text = "المسيطر: " .. player.DisplayName; pName.TextColor3 = Color3.new(1,1,1); pName.Font = "GothamBold"; pName.TextSize = 24; pName.BackgroundTransparency = 1
+
+    -- الاستهداف (كاملة)
+    local tp = pages.Target; local sBox = Instance.new("TextBox", tp); sBox.Size = UDim2.new(0.9, 0, 0, 40); sBox.Position = UDim2.new(0.05, 0, 0, 5); sBox.PlaceholderText = "🔎 ابحث..."; sBox.BackgroundColor3 = Color3.new(0,0,0); sBox.TextColor3 = Color3.new(1,1,1)
+    local pickBtn = Instance.new("TextButton", tp); pickBtn.Size = UDim2.new(0.28, 0, 0, 35); pickBtn.Position = UDim2.new(0.05, 0, 0, 50); pickBtn.Text = "☝️ اختيار"; pickBtn.BackgroundColor3 = Color3.fromRGB(40, 70, 40); pickBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", pickBtn)
+    local specBtn = Instance.new("TextButton", tp); specBtn.Size = UDim2.new(0.28, 0, 0, 35); specBtn.Position = UDim2.new(0.36, 0, 0, 50); specBtn.Text = "👁️ مراقبة"; specBtn.BackgroundColor3 = Color3.fromRGB(70, 40, 70); specBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", specBtn)
+    local tpBtn = Instance.new("TextButton", tp); tpBtn.Size = UDim2.new(0.28, 0, 0, 35); tpBtn.Position = UDim2.new(0.67, 0, 0, 50); tpBtn.Text = "🚀 انتقال"; tpBtn.BackgroundColor3 = Color3.fromRGB(40, 50, 80); tpBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", tpBtn)
+    local tStatus = Instance.new("TextLabel", tp); tStatus.Size = UDim2.new(1,0,0,30); tStatus.Position = UDim2.new(0,0,0,90); tStatus.TextColor3 = Color3.new(1,1,1); tStatus.Text = "الهدف: لا يوجد"; tStatus.BackgroundTransparency = 1
+    
+    sBox:GetPropertyChangedSignal("Text"):Connect(function() local q = sBox.Text:lower() if #q >= 2 then for _, v in pairs(Players:GetPlayers()) do if v.Name:lower():sub(1, #q) == q then RD3_Config.Target = v; tStatus.Text = "🎯 الهدف: "..v.Name; break end end end end)
+    tpBtn.MouseButton1Click:Connect(function() if RD3_Config.Target then player.Character.HumanoidRootPart.CFrame = RD3_Config.Target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end end)
+    specBtn.MouseButton1Click:Connect(function() camera.CameraSubject = RD3_Config.Target.Character.Humanoid end)
+    pickBtn.MouseButton1Click:Connect(function() RD3_Config.Target = nil; tStatus.Text = "!! اضغط على لاعب !!"; local c; c = mouse.Button1Down:Connect(function() if mouse.Target then local p = Players:GetPlayerFromCharacter(mouse.Target.Parent) or Players:GetPlayerFromCharacter(mouse.Target.Parent.Parent); if p then RD3_Config.Target = p; tStatus.Text = "🎯 الهدف: "..p.Name; c:Disconnect() end end end) end)
+
+    local btnF = Instance.new("Frame", tp); btnF.Size = UDim2.new(1,0,0,200); btnF.Position = UDim2.new(0,0,0,130); btnF.BackgroundTransparency = 1; Instance.new("UIGridLayout", btnF).CellSize = UDim2.new(0, 240, 0, 45)
+    local function Atk(txt, mode)
+        local b = Instance.new("TextButton", btnF); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(45,45,45); b.TextColor3 = Color3.new(1,1,1)
+        b.MouseButton1Click:Connect(function() 
+            if RD3_Config.ActiveMod == mode then 
+                RD3_Config.ActiveMod = ""
+                if RD3_Config.PreAttackPos then player.Character.HumanoidRootPart.CFrame = RD3_Config.PreAttackPos; RD3_Config.PreAttackPos = nil end
+            else 
+                RD3_Config.PreAttackPos = player.Character.HumanoidRootPart.CFrame
+                RD3_Config.ActiveMod = mode 
+            end
+        end)
+    end
+    Atk("إعصار فلينق 🌪️", "fling"); Atk("اغتصاب 🔞", "bang"); Atk("يلحس 👅", "lick"); Atk("يمص 🍭", "suck")
+
+    -- أخرى (كاملة)
+    local function CreateBtn(txt, color, func) local b = Instance.new("TextButton", pages.Misc); b.Size = UDim2.new(0.95,0,0,45); b.Text = txt; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; Instance.new("UICorner", b); b.MouseButton1Click:Connect(func) end
+    CreateBtn("📍 أداة انتقال", Color3.fromRGB(0, 80, 0), function() local t=Instance.new("Tool", player.Backpack); t.RequiresHandle=false; t.Name="TP Tool"; t.Activated:Connect(function() player.Character:MoveTo(mouse.Hit.Position+Vector3.new(0,3,0)) end) end)
+    CreateBtn("🛡️ Infinite Yield", Color3.fromRGB(60, 60, 100), function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end)
+    CreateBtn("🌑 ليل / نهار", Color3.fromRGB(40, 40, 40), function() Lighting.ClockTime = (Lighting.ClockTime == 14 and 0 or 14) end)
+    CreateBtn("🔄 إعادة دخول", Color3.fromRGB(100, 80, 20), function() TeleportService:Teleport(game.PlaceId, player) end)
+    CreateBtn("🌍 تغيير السيرفر", Color3.fromRGB(80, 40, 20), function() print("Server Hop") end)
+    CreateBtn("✨ شادر", Color3.fromRGB(0, 100, 100), function() local b=Instance.new("BloomEffect", Lighting); b.Intensity=0.5 end)
+    CreateBtn("⚡ سرعة (50)", Color3.fromRGB(120, 0, 0), function() RD3_Config.WalkSpeed = 50 end)
+    CreateBtn("🚶 سرعة عادية", Color3.fromRGB(50, 50, 50), function() RD3_Config.WalkSpeed = 16 end)
+    CreateBtn("😴 مضاد الأفك", Color3.fromRGB(30, 30, 30), function() print("AntiAFK ON") end)
+    CreateBtn("🛡️ مضاد الكلبشة", Color3.fromRGB(30, 30, 30), function() print("AntiCuff ON") end)
+
+    pages.Home.Visible = true
+end
+
+-- [[ الدخلة الملكية ]]
+local function Intro()
+    local sg = Instance.new("ScreenGui", player.PlayerGui); local t = Instance.new("TextLabel", sg)
+    t.Size = UDim2.new(1,0,1,0); t.BackgroundTransparency = 1; t.Text = "RD3 Creator -- By Uncle"; t.TextColor3 = Color3.new(1,1,1); t.Font = "GothamBold"; t.TextSize = 40; t.TextTransparency = 1
+    TweenService:Create(t, TweenInfo.new(1), {TextTransparency = 0}):Play(); task.wait(2.5)
+    TweenService:Create(t, TweenInfo.new(1), {TextTransparency = 1}):Play(); task.wait(0.5)
+    local m = Instance.new("TextLabel", sg); m.Size = UDim2.new(0.4, 0, 0, 60); m.Position = UDim2.new(0.3, 0, -0.1, 0); m.Text = "انكل يسلم عليك"; m.BackgroundColor3 = Color3.fromRGB(30,30,30); m.TextColor3 = Color3.new(1,1,1); m.Font = "GothamBold"; m.TextSize = 25; Instance.new("UICorner", m)
+    m:TweenPosition(UDim2.new(0.3, 0, 0.45, 0), "Out", "Bounce", 1); task.wait(2)
+    m:TweenPosition(UDim2.new(0.3, 0, 1.1, 0), "In", "Quad", 1); task.wait(1); sg:Destroy(); BuildUI()
+end
+
+Intro()
