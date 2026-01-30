@@ -57,8 +57,8 @@ local function ShowIntro()
     task.delay(5, function() 
         introGui:Destroy()
         StarterGui:SetCore("SendNotification", {
-            Title = "RD3 Creator -  Uncle رساله من",
-            Text = "تم تفعيل السكربت لا اوصيك ب المستجدين 😉",
+            Title = "RD3 Creator -   رساله من انكل و دحمي",
+            Text = "تم تفعيل السكربت لا اوصيك ب المستجدين انكل و دحمي يسلمون عليك 😉 ",
             Duration = 5
         })
     end)
